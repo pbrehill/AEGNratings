@@ -36,6 +36,11 @@ all_events <- rating_questions %>%
   group_by(area, response) %>%
   summarise(n = sum(n))
 
+# Get summary for events
+by_event <- bind_rows(rating_questions, .id = 'event') %>%
+  mutate(event_name = filelist[as.numeric(event)])
+
 write.csv(all_events, 'all_events.csv')
+write.csv(by_event, 'by_event.csv')
 
 
