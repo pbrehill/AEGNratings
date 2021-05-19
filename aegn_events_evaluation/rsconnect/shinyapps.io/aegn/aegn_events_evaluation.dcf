@@ -1,0 +1,13 @@
+name: aegn_events_evaluation
+title: aegn_events_evaluation
+username:
+account: aegn
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4152578
+bundleId: 4614803
+url: https://aegn.shinyapps.io/aegn_events_evaluation/
+when: 1621411116.51952
+lastSyncTime: 1621411116.51952
+asMultiple: FALSE
+asStatic: FALSE
