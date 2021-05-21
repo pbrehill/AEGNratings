@@ -10,9 +10,17 @@
 library(shiny)
 library(DT)
 # source('main2.0.R')
+library(shinythemes)
 
 library(tidyverse)
 library(reshape2)
+
+get_percentage <- function (x, total) {
+    ((x / total) * 100) %>%
+        round(2) %>%
+        ifelse(is.na(.), 0, .) %>%
+        paste0('%')
+}
 
 AEGN_evaluation <- function (dfs) {
     
@@ -92,7 +100,7 @@ ui <- fluidPage(
             selectInput(
                 'pivot',
                 'Select data format',
-                c('Raw', 'Pivot'),
+                c('Raw', 'Pivot', 'Pivot percentages'),
                 selected = 'Raw',
                 multiple = FALSE,
                 selectize = TRUE,
@@ -101,7 +109,9 @@ ui <- fluidPage(
             ),
             h5("This tool is designed to process event evaluation exports (.csv format) from SurveyMonkey.
              You can upload one or multiple event evaluation spreadsheets above."),
-            h5("For help, email patrick@aegn.org.au.")
+            h5("For help email ",
+               tags$a(href="mailto:patrick@aegn.org.au", "patrick@aegn.org.au")
+            )
         ),
 
         # Show a plot of the generated distribution
@@ -145,7 +155,28 @@ server <- function(input, output) {
                                          na.rm = TRUE)
             
             pivot_table
-        } 
+        } else if (input$pivot == 'Pivot percentages') {
+            pivot_table <- summary_data %>%
+                pivot_wider(names_from = response, values_from = n)
+            
+            pivot_table$total <- rowSums(pivot_table %>%
+                                             ungroup() %>%
+                                             select_if(names(.) %in% c("A little", 
+                                                                       "Moderately",
+                                                                       "Very significantly",
+                                                                       "No",
+                                                                       "Significantly",
+                                                                       "Unsure")),
+                                         na.rm = TRUE)
+            
+            pivot_table %>%
+                mutate(`A little` =  get_percentage(`A little`, total),
+                       Moderately =  get_percentage(Moderately, total),
+                       `Very significantly` = get_percentage(`Very significantly`, total),
+                       No = get_percentage(`No`, total),
+                       Significantly = get_percentage(Significantly, total),
+                       Unsure = get_percentage(Unsure, total))
+        }
         
     },
     extensions = c('Buttons'), 
