@@ -107,6 +107,9 @@ ui <- fluidPage(
                 width = NULL,
                 size = NULL
             ),
+            checkboxInput('group_event', 'Collapse questions', value = FALSE, width = NULL),
+            checkboxInput('group_question', 'Collapse events', value = FALSE, width = NULL),
+            checkboxInput('no_unsure', 'Remove unsure responses', value = FALSE, width = NULL),
             h5("This tool is designed to process event evaluation exports (.csv format) from SurveyMonkey.
              You can upload one or multiple event evaluation spreadsheets above."),
             h5("For help email ",
@@ -136,11 +139,44 @@ server <- function(input, output) {
         
         dfs <- map(inFile$datapath, ~read.csv(.x))
         names(dfs) <- inFile$name
-        summary_data <- AEGN_evaluation(dfs = dfs)
+        basic_data <- AEGN_evaluation(dfs = dfs)
+        get_data <- reactive({
+            inter_data <- basic_data %>% ungroup()
+            
+            if (input$group_event & ! input$group_question) {
+                inter_data <- inter_data %>%
+                    group_by(event, response) %>%
+                    select(-area) %>%
+                    summarise_all(sum, na.rm = TRUE)
+            } else if (!input$group_event & input$group_question) {
+                inter_data <- inter_data %>%
+                    group_by(area, response) %>%
+                    select(-event) %>%
+                    summarise_all(sum, na.rm = TRUE)
+            } else if (input$group_event & input$group_question) {
+                inter_data <- inter_data %>%
+                    group_by(response) %>%
+                    select(-event, -area) %>%
+                    summarise_all(sum, na.rm = TRUE)
+            }
+            
+            if (input$no_unsure) {
+                inter_data <- inter_data %>%
+                    filter(response != 'Unsure')
+            }
+            
+            inter_data
+            })
+        
+        summary_data <- get_data()
         
         if (input$pivot == 'Raw') {
             summary_data
         } else if (input$pivot == 'Pivot') {
+            if (nrow(summary_data) == 0) {
+                summary_data
+            } else {
+            
             pivot_table <- summary_data %>%
                 pivot_wider(names_from = response, values_from = n)
         
@@ -155,7 +191,12 @@ server <- function(input, output) {
                                          na.rm = TRUE)
             
             pivot_table
+            }
         } else if (input$pivot == 'Pivot percentages') {
+            if (nrow(summary_data) == 0) {
+                summary_data
+            } else {
+            
             pivot_table <- summary_data %>%
                 pivot_wider(names_from = response, values_from = n)
             
@@ -168,22 +209,19 @@ server <- function(input, output) {
                                                                        "Significantly",
                                                                        "Unsure")),
                                          na.rm = TRUE)
-            
+
             pivot_table %>%
-                mutate(`A little` =  get_percentage(`A little`, total),
-                       Moderately =  get_percentage(Moderately, total),
-                       `Very significantly` = get_percentage(`Very significantly`, total),
-                       No = get_percentage(`No`, total),
-                       Significantly = get_percentage(Significantly, total),
-                       Unsure = get_percentage(Unsure, total))
+                mutate_if(is.numeric, ~get_percentage(., total = total))
+            }
         }
         
     },
     extensions = c('Buttons'), 
     options = list(
+        language = list(emptyTable = 'No valid questions found. Check if there are valid questions in the data.'),
         pageLength = -1,
-        dom = 'Bfrtip',
-        buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+        dom = 'Bfrti',
+        buttons = c('copy', 'csv', 'excel', 'print')
     ))
 }
 
