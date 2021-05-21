@@ -5,9 +5,9 @@ account: aegn
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 4152578
-bundleId: 4614803
+bundleId: 4623169
 url: https://aegn.shinyapps.io/aegn_events_evaluation/
-when: 1621411116.51952
-lastSyncTime: 1621411116.51952
+when: 1621582567.18546
+lastSyncTime: 1621582567.18546
 asMultiple: FALSE
 asStatic: FALSE

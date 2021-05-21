@@ -54,10 +54,15 @@ AEGN_evaluation <- function (dfs) {
     
     # Get summary for events
     by_event <- bind_rows(rating_questions, .id = 'event') %>%
-        # mutate(event_name = names(dfs)[as.numeric(event)],
-        #        event_name = gsub("\\.csv", "", event_name)) %>%
+        mutate(event = gsub(".csv", "", event)) %>%
         filter(!is.na(response), response != "")
         # select(-event_name)
+    
+    by_event$response <- factor(by_event$response, levels = c("No", "A little", "Moderately", "Significantly", "Very significantly", "Unsure"))
+    
+    by_event <- by_event %>%
+        expand(event, area, response) %>% 
+        left_join(by_event)
     
     # write.csv(all_events, 'all_events.csv')
     # write.csv(by_event, 'by_event.csv')
@@ -71,7 +76,7 @@ AEGN_evaluation <- function (dfs) {
 ui <- fluidPage(
 
     # Application title
-    titlePanel("AEGN events data wrangling"),
+    titlePanel("AEGN Events Evaluation Data Processor"),
 
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
@@ -93,7 +98,10 @@ ui <- fluidPage(
                 selectize = TRUE,
                 width = NULL,
                 size = NULL
-            )
+            ),
+            h5("This tool is designed to process event evaluation exports (.csv format) from SurveyMonkey.
+             You can upload one or multiple event evaluation spreadsheets above."),
+            h5("For help, email patrick@aegn.org.au.")
         ),
 
         # Show a plot of the generated distribution
@@ -126,16 +134,18 @@ server <- function(input, output) {
             pivot_table <- summary_data %>%
                 pivot_wider(names_from = response, values_from = n)
         
-            pivot_table$total <- rowSums(pivot_table[c("A little", 
+            pivot_table$total <- rowSums(pivot_table %>%
+                                             ungroup() %>%
+                                             select_if(names(.) %in% c("A little", 
                                                     "Moderately",
                                                     "Very significantly",
                                                     "No",
                                                     "Significantly",
-                                                    "Unsure")],
+                                                    "Unsure")),
                                          na.rm = TRUE)
             
             pivot_table
-        }
+        } 
         
     },
     extensions = c('Buttons'), 
